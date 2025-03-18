@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 
+from bot_config import bot
 from config import *
 from work_database import save_media_to_db
 
