@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Dispatcher, types, F
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 
@@ -10,6 +11,8 @@ from bot_config import dp, bot
 from create_request import (create_request, process_category, process_address, handle_address_confirmation,
                             process_media, process_description, confirm_request)
 from keyboards import *
+from report_export import handle_statistics, handle_statistics_today, handle_statistics_all_time, \
+    handle_back_to_admin_menu
 from states import *
 from work_database import user_exists, get_user_data, save_user_data
 
@@ -42,8 +45,8 @@ async def start(message: types.Message, state: FSMContext):
     else:
         logger.info(f"Пользователь с ID {message.from_user.id} не найден в системе. Отправляем сообщение о согласии.")
         await message.answer(
-            """Вас приветствует служба приёма обращений ООО «КЭО». 
-            Заполняя обращение через Чатбот, Вы даёте согласие на использование ваших персональных данных.
+            """Вас приветствует служба приёма обращений. Заполняя обращение через Чатбот, 
+            Вы даёте согласие на использование ваших персональных данных.
             \n\nНажмите кнопку 'Принять', чтобы продолжить.""",
             reply_markup=accept_button()
         )
@@ -322,6 +325,12 @@ def register_state_handlers(dp: Dispatcher):
     dp.message.register(confirm_request, RequestCreationStates.confirm_request)
 
     dp.message.register(handle_admin_answer, AnswerStates.waiting_for_answer)
+
+    # Обработчики для статистики
+    dp.message.register(handle_statistics, F.text == "📊 Статистика", StateFilter("*"))
+    dp.message.register(handle_statistics_today, F.text == "📅 Статистика за сегодня", StateFilter(StatisticsStates.waiting_for_statistics_choice))
+    dp.message.register(handle_statistics_all_time, F.text == "📊 Статистика за всё время", StateFilter(StatisticsStates.waiting_for_statistics_choice))
+    dp.message.register(handle_back_to_admin_menu, F.text == "🔙 Назад", StateFilter(StatisticsStates.waiting_for_statistics_choice))
 
 
 @dp.callback_query(lambda query: query.data.startswith('answer:'))

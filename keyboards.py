@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton
 
@@ -15,8 +17,18 @@ def main_menu_admins():
     """Создает клавиатуру основного меню для администраторов"""
     builder = ReplyKeyboardBuilder()
     builder.add(KeyboardButton(text="🔄 Обновить данные"))
+    builder.add(KeyboardButton(text="📊 Статистика"))
     # builder.add(KeyboardButton(text="📋 Заявки"))
     builder.add(KeyboardButton(text="📝 Создать заявку"))
+    return builder.as_markup(resize_keyboard=True)
+
+
+def statistics_selection_menu():
+    """Создает клавиатуру для выбора типа статистики"""
+    builder = ReplyKeyboardBuilder()
+    builder.add(KeyboardButton(text="📊 Статистика за всё время"))
+    builder.add(KeyboardButton(text="📅 Статистика за сегодня"))
+    builder.add(KeyboardButton(text="🔙 Назад"))
     return builder.as_markup(resize_keyboard=True)
 
 

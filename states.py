@@ -35,3 +35,9 @@ class UserMenuStates(StatesGroup):
     main_menu = State()             # Основное меню
     messages_menu = State()         # Меню сообщений
     requests_menu = State()         # Меню заявок
+
+
+class StatisticsStates(StatesGroup):
+    waiting_for_statistics_choice = State()  # Ожидание выбора статистики
+    showing_all_time_statistics = State()    # Показ статистики за всё время
+    showing_today_statistics = State()       # Показ статистики за сегодня
