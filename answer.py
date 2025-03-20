@@ -6,10 +6,10 @@ from aiogram.types import ReplyKeyboardRemove, FSInputFile
 
 from bot_config import bot
 from config import *
+from keyboards import main_menu_users, main_menu_admins
 from states import *
 from new_send_email import send_email
-from work_database import get_request_details, update_request_status_to_closed
-
+from work_database import get_request_details, update_request_status_to_closed, user_exists, get_user_data
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,20 @@ async def handle_admin_response_query(query: types.CallbackQuery, request_id: in
     Обрабатывает запрос от администратора на отправку ответа по заявке.
     Проверяет статус заявки и запрашивает ответ администратора.
     """
+    # Проверяем, является ли пользователь администратором
+    if not user_exists(query.from_user.id):  # Проверяем, существует ли пользователь
+        logger.warning(f"Пользователь {query.from_user.id} не найден в системе.")
+        await query.message.answer("Вы не авторизованы для выполнения этой операции.")
+        await query.answer()
+        return
+
+    user_data = get_user_data(query.from_user.id)
+    if user_data["role"] != "admin":  # Проверяем роль пользователя
+        logger.warning(f"Пользователь {query.from_user.id} не является администратором.")
+        await query.message.answer("У вас нет прав для выполнения этой операции.")
+        await query.answer()
+        return
+
     logger.info(f"Получение информации по заявке {request_id}")
 
     # Получаем информацию по заявке
@@ -47,6 +61,18 @@ async def handle_admin_answer(message: types.Message, state: FSMContext):
     Обрабатывает ответ администратора на заявку. Отправляет ответ пользователю по заявке.
     Сохраняет медиафайл, если он прикреплён.
     """
+    # Проверяем, является ли пользователь администратором
+    if not user_exists(message.from_user.id):  # Проверяем, существует ли пользователь
+        logger.warning(f"Пользователь {message.from_user.id} не найден в системе.")
+        await message.answer("Вы не авторизованы для выполнения этой операции.")
+        return
+
+    user_data = get_user_data(message.from_user.id)
+    if user_data["role"] != "admin":  # Проверяем роль пользователя
+        logger.warning(f"Пользователь {message.from_user.id} не является администратором.")
+        await message.answer("У вас нет прав для выполнения этой операции.")
+        return
+
     # Получаем данные из состояния
     user_data = await state.get_data()
     request_id = user_data.get("request_id")
@@ -124,27 +150,33 @@ async def handle_admin_answer(message: types.Message, state: FSMContext):
     # Отправляем ответ пользователю
     send_email(request_data, response_text, file_path)
 
+    user_data_base = get_user_data(user_id)
+
+    reply_markup = main_menu_users() if user_data_base['role'] == 'user' else main_menu_admins()
+
     try:
         if media:
             # Отправляем фото или видео с подписью
             if message.photo:
                 print(file_path)
-                await bot.send_photo(user_id, photo=FSInputFile(file_path), caption=response_text, parse_mode="html")
+                await bot.send_photo(user_id, photo=FSInputFile(file_path), caption=response_text,
+                                     parse_mode="html", reply_markup=reply_markup)
             elif message.video:
                 print(file_path)
-                await bot.send_video(user_id, video=FSInputFile(file_path), caption=response_text, parse_mode="html")
+                await bot.send_video(user_id, video=FSInputFile(file_path), caption=response_text,
+                                     parse_mode="html", reply_markup=reply_markup)
         else:
             # Отправляем только текст, если нет медиафайла
-            await bot.send_message(user_id, response_text, parse_mode="html")
+            await bot.send_message(user_id, response_text, parse_mode="html", reply_markup=reply_markup)
 
         # Закрываем заявку
         update_request_status_to_closed(request_id)
         logger.info(f"Ответ отправлен пользователю {user_id} по заявке {request_id}.")
-        await message.answer("Ответ отправлен пользователю!")
+
+        await message.answer("Ответ отправлен пользователю!", reply_markup=main_menu_admins())
 
     except Exception as e:
         logger.error(f"Ошибка при отправке ответа пользователю: {e}")
         await message.answer(f"Ошибка при отправке ответа: {e}")
 
-    # Завершаем состояние
-    await state.set_state(UserStates.main_dialog)
+    await state.set_state(MainMenuStates.menu_admin)

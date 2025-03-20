@@ -1,14 +1,17 @@
+import logging
 from geopy.geocoders import Nominatim
-
 from aiogram import types
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
+from datetime import datetime
 
-from admin_notifications import notify_admins_about_request
-from bot_config import bot
+
 from keyboards import *
-from save_media import *
 from states import *
+from admin_notifications import notify_admins_about_request
+from config import WORKING_HOURS, WORKING_DAYS
+from bot_config import bot
+from save_media import save_media_file, download_media_file
 from work_database import get_user_data, get_available_admin_id, save_request_data
 
 
@@ -21,12 +24,24 @@ geolocator = Nominatim(user_agent="myGeocoder")
 
 
 async def create_request(message: types.Message, state: FSMContext):
+    """Обработчик создания заявки с проверкой рабочего времени"""
+    now = datetime.now()
+    print(now)
+
+    if now.weekday() not in WORKING_DAYS:
+        await message.answer("Создание заявок доступно только в рабочие дни.")
+        return
+
+    if not (WORKING_HOURS[0] <= now.hour < WORKING_HOURS[1]):
+        await message.answer("Создание заявок доступно только в рабочее время.")
+        return
+
     user_data = get_user_data(message.from_user.id)
     logger.info(f"Пользователь {message.from_user.id} начал создание заявки.")
 
     if user_data:
         logger.debug(f"Данные пользователя {message.from_user.id} найдены: {user_data}")
-        await message.answer(f"Выберите тему заявки", parse_mode="html", reply_markup=request_category_menu())
+        await message.answer("Выберите тему заявки", parse_mode="html", reply_markup=request_category_menu())
         await state.set_state(RequestCreationStates.select_category)
     else:
         logger.warning(f"Пользователь {message.from_user.id} не найден в базе данных.")
@@ -169,4 +184,11 @@ async def confirm_request(message: types.Message, state: FSMContext):
         await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_id)
     else:
         await message.answer("Отмена заявки", reply_markup=reply_markup)
-    await state.set_state(UserStates.main_dialog)
+
+    user_data_base = get_user_data(message.from_user.id)
+
+    reply_markup = main_menu_users() if user_data_base['role'] == 'user' else main_menu_admins()
+    if user_data_base['role'] == 'user':
+        await state.set_state(MainMenuStates.menu_user)
+    elif user_data_base['role'] == 'admin':
+        await state.set_state(MainMenuStates.menu_admin)

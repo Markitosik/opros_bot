@@ -28,7 +28,7 @@ def statistics_selection_menu():
     builder = ReplyKeyboardBuilder()
     builder.add(KeyboardButton(text="📊 Статистика за всё время"))
     builder.add(KeyboardButton(text="📅 Статистика за сегодня"))
-    builder.add(KeyboardButton(text="🔙 Назад"))
+    builder.add(KeyboardButton(text="↩️ Назад"))
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -37,7 +37,7 @@ def data_menu_admins():
     builder = ReplyKeyboardBuilder()
     builder.row(KeyboardButton(text="🔄 Обновить свои данные"))
     # builder.row(KeyboardButton(text="👥 Данные пользователей"))
-    # builder.row(KeyboardButton(text="↩️ Назад"))
+    builder.row(KeyboardButton(text="↩️ Назад"))
     return builder.as_markup(resize_keyboard=True)
 
 

@@ -52,7 +52,7 @@ def init_db():
                 address TEXT,
                 description TEXT,
                 status TEXT DEFAULT 'open',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT (DATETIME('now', '+3 hours')),
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 FOREIGN KEY (admin_id) REFERENCES users (id)  -- Внешний ключ для администратора
             )
@@ -66,7 +66,7 @@ def init_db():
                 request_id INTEGER NOT NULL,
                 sender_id INTEGER NOT NULL,
                 message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT (DATETIME('now', '+3 hours')),
                 FOREIGN KEY (request_id) REFERENCES requests (id)
             )
         ''')
@@ -79,7 +79,7 @@ def init_db():
                 request_id INTEGER,
                 message_id INTEGER,
                 file_path TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT (DATETIME('now', '+3 hours')),
                 FOREIGN KEY (request_id) REFERENCES requests (id),
                 FOREIGN KEY (message_id) REFERENCES messages (id),
                 CHECK (request_id IS NOT NULL OR message_id IS NOT NULL)

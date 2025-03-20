@@ -5,13 +5,30 @@ class AgreementStates(StatesGroup):
     accepting_agreement = State()   # Согласие на обработку данных
 
 
+class DataStates(StatesGroup):
+    data_menu = State()
+
+
+class StatsStates(StatesGroup):
+    stat_menu = State()  # Меню статистики
+    stat_all_time = State()  # Статистика за все время
+    stat_last_day = State()  # Статистика за последний день
+
+
 class UserStates(StatesGroup):
     fio = State()                   # Ввод ФИО
     phone = State()                 # Ввод номера телефона
     email = State()                 # Ввод электронной почты
     role = State()                  # Ввод роли пользователя
 
-    main_dialog = State()           # Главное меню
+
+class MainMenuStates(StatesGroup):
+    menu_admin = State()
+    menu_user = State()
+
+
+class AnswerStates(StatesGroup):
+    waiting_for_answer = State()  # Ввод ответа по заявке
 
 
 class RequestCreationStates(StatesGroup):
@@ -27,17 +44,7 @@ class RequestCreationStates(StatesGroup):
     confirm_request = State()       # Подтверждение заявки перед отправкой
 
 
-class AnswerStates(StatesGroup):
-    waiting_for_answer = State()    # Ввод ответа по заявке
-
-
 class UserMenuStates(StatesGroup):
     main_menu = State()             # Основное меню
     messages_menu = State()         # Меню сообщений
     requests_menu = State()         # Меню заявок
-
-
-class StatisticsStates(StatesGroup):
-    waiting_for_statistics_choice = State()  # Ожидание выбора статистики
-    showing_all_time_statistics = State()    # Показ статистики за всё время
-    showing_today_statistics = State()       # Показ статистики за сегодня

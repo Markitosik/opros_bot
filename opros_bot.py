@@ -36,12 +36,12 @@ async def start(message: types.Message, state: FSMContext):
             # Если пользователь админ, показываем меню для админов
             logger.info("Пользователь - админ. Отправляем меню администратору.")
             await message.answer(f"Привет, админ! Выбери, что хочешь сделать :", reply_markup=main_menu_admins())
+            await state.set_state(MainMenuStates.menu_admin)
         else:
             # Если пользователь не админ, показываем меню для обычных пользователей
             logger.info("Пользователь не является администратором. Отправляем меню пользователю.")
             await message.answer(f"Привет! Выбери, что хочешь сделать :", reply_markup=main_menu_users())
-
-        await state.set_state(UserStates.main_dialog)
+            await state.set_state(MainMenuStates.menu_user)
     else:
         logger.info(f"Пользователь с ID {message.from_user.id} не найден в системе. Отправляем сообщение о согласии.")
         await message.answer(
@@ -68,15 +68,22 @@ async def update_data_menu_admins(message: types.Message, state: FSMContext):
             # Если это администратор, показываем меню для админа
             logger.info(f"Пользователь с ID {message.from_user.id} является администратором. Отправляем меню.")
             await message.answer("Вы администратор. Выберите, что хотите сделать:", reply_markup=data_menu_admins())
-            await state.set_state(UserStates.main_dialog)  # Переход в главное меню админа
+            await state.set_state(DataStates.data_menu)  # Переход в главное меню админа
         else:
             # Если пользователь не администратор
             logger.warning(f"Пользователь с ID {message.from_user.id} не является администратором.")
-            await message.answer("Вы не являетесь администратором.")
+            await message.answer("Вы не являетесь администратором.", reply_markup=main_menu_users())
     else:
         # Если пользователя нет в базе данных
         logger.warning(f"Пользователь с ID {message.from_user.id} не найден в базе данных.")
         await message.answer("Не удалось найти ваши данные. Пожалуйста, начните с регистрации.")
+        await message.answer(
+            """Вас приветствует служба приёма обращений. Заполняя обращение через Чатбот, 
+            Вы даёте согласие на использование ваших персональных данных.
+            \n\nНажмите кнопку 'Принять', чтобы продолжить.""",
+            reply_markup=accept_button()
+        )
+        await state.set_state(AgreementStates.accepting_agreement)
 
 
 async def update_data(message: types.Message, state: FSMContext):
@@ -296,7 +303,10 @@ async def get_email(message: types.Message, state: FSMContext):
 
     reply_markup = main_menu_users() if user_data_base['role'] == 'user' else main_menu_admins()
     await message.answer(text, parse_mode="html", reply_markup=reply_markup)
-    await state.set_state(UserStates.main_dialog)
+    if user_data_base['role'] == 'user':
+        await state.set_state(MainMenuStates.menu_user)
+    elif user_data_base['role'] == 'admin':
+        await state.set_state(MainMenuStates.menu_admin)
     logger.info(f"Пользователю с ID {message.from_user.id} отправлено сообщение с результатами.")
 
 
@@ -305,16 +315,18 @@ def register_state_handlers(dp: Dispatcher):
     dp.message.register(start, F.text == "/start")
     dp.message.register(accept_agreement, AgreementStates.accepting_agreement)
 
-    dp.message.register(update_data_menu_admins, F.text == "🔄 Обновить данные")
+    dp.message.register(update_data_menu_admins, F.text == "🔄 Обновить данные", StateFilter(MainMenuStates.menu_admin))
 
     dp.message.register(update_data, F.text == "🔄 Обновить свои данные")
     dp.message.register(create_request, F.text == "📝 Создать заявку")
-    dp.message.register(update_data, F.text == "📋 Мои заявки")
+    # dp.message.register(update_data, F.text == "📋 Мои заявки")
 
     dp.message.register(get_fio, UserStates.fio)
     dp.message.register(get_role, UserStates.role)
     dp.message.register(get_phone, UserStates.phone)
     dp.message.register(get_email, UserStates.email)
+
+    dp.message.register(handle_back_to_admin_menu, F.text == "↩️ Назад", StateFilter(DataStates.data_menu))
 
     dp.message.register(process_category, RequestCreationStates.select_category)
 
@@ -327,10 +339,12 @@ def register_state_handlers(dp: Dispatcher):
     dp.message.register(handle_admin_answer, AnswerStates.waiting_for_answer)
 
     # Обработчики для статистики
-    dp.message.register(handle_statistics, F.text == "📊 Статистика", StateFilter("*"))
-    dp.message.register(handle_statistics_today, F.text == "📅 Статистика за сегодня", StateFilter(StatisticsStates.waiting_for_statistics_choice))
-    dp.message.register(handle_statistics_all_time, F.text == "📊 Статистика за всё время", StateFilter(StatisticsStates.waiting_for_statistics_choice))
-    dp.message.register(handle_back_to_admin_menu, F.text == "🔙 Назад", StateFilter(StatisticsStates.waiting_for_statistics_choice))
+    dp.message.register(handle_statistics, F.text == "📊 Статистика", StateFilter(MainMenuStates.menu_admin))
+    dp.message.register(handle_statistics_today, F.text == "📅 Статистика за сегодня",
+                        StateFilter(StatsStates.stat_menu))
+    dp.message.register(handle_statistics_all_time, F.text == "📊 Статистика за всё время",
+                        StateFilter(StatsStates.stat_menu))
+    dp.message.register(handle_back_to_admin_menu, F.text == "↩️ Назад", StateFilter(StatsStates.stat_menu))
 
 
 @dp.callback_query(lambda query: query.data.startswith('answer:'))
