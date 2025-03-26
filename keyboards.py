@@ -95,8 +95,8 @@ def request_category_menu():
         KeyboardButton(text="Вывоз КГО"),
         KeyboardButton(text="Вывоз РСО"),
         KeyboardButton(text="Начисления"),
-        KeyboardButton(text="Корректировки данных в квитанции"),
-        KeyboardButton(text="Другое")
+        KeyboardButton(text="Корректировка данных в квитанции"),
+        KeyboardButton(text="Актуальное")
     )
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)

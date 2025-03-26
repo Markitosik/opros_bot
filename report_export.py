@@ -53,7 +53,7 @@ async def handle_statistics_all_time(message: Message, state: FSMContext):
 
     if file_path is None:
         await message.answer("Нет данных для статистики за всё время.")
-        await state.set_state(StatsStates.stat_all_time)
+        await state.set_state(StatsStates.stat_menu)
         return
 
     user_data_base = get_user_data(message.from_user.id)

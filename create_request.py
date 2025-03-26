@@ -12,8 +12,7 @@ from admin_notifications import notify_admins_about_request
 from config import WORKING_HOURS, WORKING_DAYS
 from bot_config import bot
 from save_media import save_media_file, download_media_file
-from work_database import get_user_data, get_available_admin_id, save_request_data
-
+from work_database import get_user_data, get_available_admin_id, save_request_data, get_admins
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(filename)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -52,7 +51,12 @@ async def process_category(message: types.Message, state: FSMContext):
     await state.update_data(category=message.text)
     logger.info(f"Пользователь {message.from_user.id} выбрал категорию: {message.text}")
 
-    await message.answer("Укажите адрес контейнерной площадки:", reply_markup=address_button())
+    # Проверяем, выбрана ли категория "Начисление" или "Корректировка данных в квитанции"
+    if message.text in ["Начисления", "Корректировка данных в квитанции"]:
+        await message.answer("Укажите адрес домовладения:", reply_markup=address_button())
+    else:
+        await message.answer("Укажите адрес контейнерной площадки:", reply_markup=address_button())
+
     await state.set_state(RequestCreationStates.enter_address)
 
 
@@ -82,12 +86,16 @@ async def process_address(message: types.Message, state: FSMContext):
 
 async def handle_address_confirmation(message: types.Message, state: FSMContext):
     user_answer = message.text.lower()
-
+    data = await state.get_data()
     if user_answer == "да":
         logger.info(f"Пользователь {message.from_user.id} подтвердил адрес: {message.text}")
         await message.answer(f"Адрес подтвержден: {message.text}")
-        await message.answer("Теперь загрузите медиафайл:", reply_markup=ReplyKeyboardRemove())
-        await state.set_state(RequestCreationStates.attach_media)
+        if data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
+            await message.answer("Опишите проблему:", reply_markup=ReplyKeyboardRemove())
+            await state.set_state(RequestCreationStates.enter_description)
+        else:
+            await message.answer("Теперь загрузите медиафайл:", reply_markup=ReplyKeyboardRemove())
+            await state.set_state(RequestCreationStates.attach_media)
     elif user_answer == "нет":
         logger.info(f"Пользователь {message.from_user.id} отклонил адрес: {message.text}")
         await message.answer("Введите новый адрес:", reply_markup=address_button())
@@ -158,6 +166,11 @@ async def process_description(message: types.Message, state: FSMContext):
                 logger.debug(f"Видео отправлено пользователю {message.from_user.id}")
         except Exception as e:
             logger.error(f"Ошибка при отправке медиа пользователю {message.from_user.id}: {e}")
+            await message.answer(f"Проверьте данные:\n{request_text}\nПодтвердить?", parse_mode="html",
+                                 reply_markup=confirmation_buttons())
+    else:
+        await message.answer(f"Проверьте данные:\n{request_text}\nПодтвердить?", parse_mode="html",
+                             reply_markup=confirmation_buttons())
 
     await state.set_state(RequestCreationStates.confirm_request)
 
@@ -168,20 +181,47 @@ async def confirm_request(message: types.Message, state: FSMContext):
     if message.text.lower() == "да":
         data = await state.get_data()
 
-        admin_id, admin_telegram_id = get_available_admin_id()
+        admin_id, admin_telegram_ids = get_available_admin_id()
+
+        if data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
+            admin_telegram_ids = get_admins()
+            data['status'] = 'closed'
+        else:
+            data['status'] = 'open'
 
         # Вставляем данные заявки в БД
-        last_row_id = save_request_data(user_data_base['id'], data, admin_id)
+        last_row_id = save_request_data(user_data_base['id'], data, admin_id[0])
 
         # Обрабатываем медиафайл
-        if data.get("media"):
+        if data.get("media") and not data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
             await save_media_file(data["media"], last_row_id)  # Сохраняем файл и запись в БД
 
         await message.answer(f"Ваше обращение №{last_row_id} поступило в работу. Спасибо за Ваше обращение.",
                              reply_markup=reply_markup)
-
-        # Уведомляем администраторов
-        await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_id)
+        if data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
+            await message.answer("""Добрый день. Мы готовы разобраться с каждым случаем индивидуально. """
+                                 """Для этого просим сообщить наименование населенного пункта, с указанием улицы и """
+                                 """номеров ближайших домов. Мы еще раз проверим была ли оказана услуга и каким """
+                                 """образом и при необходимости проведем корректировку в квитанции. Также просим """
+                                 """сообщить, если Вы заметили неточности в полученных квитанциях, такие как: """
+                                 """неправильное ФИО и количество собственников домовладения или зарегистрированных """
+                                 """в нем человек, а также превышение периода выставленных счетов более чем на 3 """
+                                 """года, то просим прислать уточненные данные о себе по электронной почте: """
+                                 """info@rotko10.ru или передать информацию по телефону горячей линии: """
+                                 """+7 (8142) 79-82-86, она работает: \n- понедельник – пятница с 08:00 до 20:00,\n"""
+                                 """- суббота – воскресенье с 09:00 до 17:00\nПри желании это можно сделать при """
+                                 """личном визите в наш офис по адресу: г. Петрозаводск, ул. Онежской флотилии, """
+                                 """д. 26. Для выставления корректной квитанции нужно написать лишь ФИО собственника """
+                                 """и предоставить документ удостоверяющий личность, копию правоустанавливающего """
+                                 """документа на квартиру или домовладение, если у дома несколько собственников, а в """
+                                 """реальности проживает один человек, то можно приложить справку о """
+                                 """зарегистрированных гражданах, даже в случае, когда таковые отсутствуют, (такую """
+                                 """справку заказывает собственник на госуслугах) и сумму в квитанции уменьшат.""",
+                                 reply_markup=reply_markup)
+            await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_ids)
+        else:
+            # Уведомляем администраторов
+            await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_ids)
     else:
         await message.answer("Отмена заявки", reply_markup=reply_markup)
 

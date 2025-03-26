@@ -18,6 +18,10 @@ def send_email(request_data, response_text, file_path):
 
     subject = f"Заявка №{request_data['request_id']}"
 
+    response_text = response_text + ("""\n_______________________\n\n"""
+                                     """Данное сообщение сформировано автоматически,"""
+                                     """пожалуйста, не отвечайте на это письмо.""")
+
     # Создаем email сообщение
     msg = MIMEMultipart()
     msg['From'] = FROM_EMAIL
@@ -56,4 +60,4 @@ def send_email(request_data, response_text, file_path):
                         f"{request_data['user']['email']}")
     except Exception as e:
         logger.error(f"Ошибка при отправке письма: {e}")
-        raise
+        return

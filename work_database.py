@@ -120,7 +120,7 @@ def get_available_admin_id():
 
     if admin_id:
         logger.info(f"Найден доступный администратор: {admin_id[0]}")
-        return admin_id[0], admin_id[1]
+        return [admin_id[0]], [admin_id[1]]
     else:
         logger.warning("Доступных администраторов не найдено.")
         return None
@@ -213,9 +213,8 @@ def save_request_data(user_id, request_data, admin_id):
         last_row_id = execute_db(
             """INSERT INTO requests (user_id, admin_id, category, address, description, status) 
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (user_id, admin_id, request_data["category"], request_data["address"], request_data["description"], "open"),
-            commit=True
-        )
+            (user_id, admin_id, request_data["category"], request_data["address"], request_data["description"],
+             request_data['status']), commit=True)
         logger.info(f"Заявка пользователя с ID {user_id} сохранена, ID заявки: {last_row_id}.")
         return last_row_id
     except Exception as e:
