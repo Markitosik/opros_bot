@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-async def notify_admins_about_request(bot: Bot, request_id, user_data, request_data, admin_ids):
+async def notify_admins_about_request(bot: Bot, request_id, user_data, request_data, admin_id):
     """
     Отправляет уведомление администраторам о новой заявке.
     """
@@ -23,25 +23,22 @@ async def notify_admins_about_request(bot: Bot, request_id, user_data, request_d
         f"Описание: <b>{request_data['description']}</b>"
     )
 
-    logger.info(f"Отправка уведомления администраторам о заявке {request_id}")
+    logger.info(f"Отправка уведомления админу {admin_id} о заявке {request_id}")
 
-    reply_markup = None if request_data['status'] == 'closed' else create_keyboard_answer(request_id)
-
-    for admin_id in admin_ids:
-        try:
-            if request_data.get("media"):
-                file_path = request_data["media"].split('.')[0]
-                try:
-                    logger.info(f"Отправка фото админу {admin_id} для заявки {request_id}")
-                    await bot.send_photo(chat_id=admin_id, photo=file_path, caption=request_text,
-                                         reply_markup=reply_markup, parse_mode="html")
-                except Exception:
-                    logger.warning(f"Ошибка при отправке фото, пробуем отправить видео админу {admin_id}")
-                    await bot.send_video(chat_id=admin_id, video=file_path, caption=request_text,
-                                         reply_markup=reply_markup, parse_mode="html")
-            else:
-                logger.info(f"Отправка текстового сообщения админу {admin_id} для заявки {request_id}")
-                await bot.send_message(chat_id=admin_id, text=request_text,
-                                       reply_markup=reply_markup, parse_mode="html")
-        except Exception as e:
-            logger.error(f"Ошибка при отправке уведомления админу {admin_id}: {e}")
+    try:
+        if request_data.get("media"):
+            file_path = request_data["media"].split('.')[0]
+            try:
+                logger.info(f"Отправка фото админу {admin_id} для заявки {request_id}")
+                await bot.send_photo(chat_id=admin_id, photo=file_path, caption=request_text,
+                                     reply_markup=create_keyboard_answer(request_id), parse_mode="html")
+            except Exception:
+                logger.warning(f"Ошибка при отправке фото, пробуем отправить видео админу {admin_id}")
+                await bot.send_video(chat_id=admin_id, video=file_path, caption=request_text,
+                                     reply_markup=create_keyboard_answer(request_id), parse_mode="html")
+        else:
+            logger.info(f"Отправка текстового сообщения админу {admin_id} для заявки {request_id}")
+            await bot.send_message(chat_id=admin_id, text=request_text,
+                                   reply_markup=create_keyboard_answer(request_id), parse_mode="html")
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления админу {admin_id}: {e}")

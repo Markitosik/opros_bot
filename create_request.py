@@ -181,16 +181,15 @@ async def confirm_request(message: types.Message, state: FSMContext):
     if message.text.lower() == "да":
         data = await state.get_data()
 
-        admin_id, admin_telegram_ids = get_available_admin_id()
+        admin_id, admin_telegram_id = get_available_admin_id()
 
         if data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
-            admin_telegram_ids = get_admins()
             data['status'] = 'closed'
         else:
             data['status'] = 'open'
 
         # Вставляем данные заявки в БД
-        last_row_id = save_request_data(user_data_base['id'], data, admin_id[0])
+        last_row_id = save_request_data(user_data_base['id'], data, admin_id)
 
         # Обрабатываем медиафайл
         if data.get("media") and not data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
@@ -198,30 +197,8 @@ async def confirm_request(message: types.Message, state: FSMContext):
 
         await message.answer(f"Ваше обращение №{last_row_id} поступило в работу. Спасибо за Ваше обращение.",
                              reply_markup=reply_markup)
-        if data['category'] in ["Начисления", "Корректировка данных в квитанции"]:
-            await message.answer("""Добрый день. Мы готовы разобраться с каждым случаем индивидуально. """
-                                 """Для этого просим сообщить наименование населенного пункта, с указанием улицы и """
-                                 """номеров ближайших домов. Мы еще раз проверим была ли оказана услуга и каким """
-                                 """образом и при необходимости проведем корректировку в квитанции. Также просим """
-                                 """сообщить, если Вы заметили неточности в полученных квитанциях, такие как: """
-                                 """неправильное ФИО и количество собственников домовладения или зарегистрированных """
-                                 """в нем человек, а также превышение периода выставленных счетов более чем на 3 """
-                                 """года, то просим прислать уточненные данные о себе по электронной почте: """
-                                 """info@rotko10.ru или передать информацию по телефону горячей линии: """
-                                 """+7 (8142) 79-82-86, она работает: \n- понедельник – пятница с 08:00 до 20:00,\n"""
-                                 """- суббота – воскресенье с 09:00 до 17:00\nПри желании это можно сделать при """
-                                 """личном визите в наш офис по адресу: г. Петрозаводск, ул. Онежской флотилии, """
-                                 """д. 26. Для выставления корректной квитанции нужно написать лишь ФИО собственника """
-                                 """и предоставить документ удостоверяющий личность, копию правоустанавливающего """
-                                 """документа на квартиру или домовладение, если у дома несколько собственников, а в """
-                                 """реальности проживает один человек, то можно приложить справку о """
-                                 """зарегистрированных гражданах, даже в случае, когда таковые отсутствуют, (такую """
-                                 """справку заказывает собственник на госуслугах) и сумму в квитанции уменьшат.""",
-                                 reply_markup=reply_markup)
-            await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_ids)
-        else:
-            # Уведомляем администраторов
-            await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_ids)
+
+        await notify_admins_about_request(bot, last_row_id, user_data_base, data, admin_telegram_id)
     else:
         await message.answer("Отмена заявки", reply_markup=reply_markup)
 

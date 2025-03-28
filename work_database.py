@@ -120,7 +120,7 @@ def get_available_admin_id():
 
     if admin_id:
         logger.info(f"Найден доступный администратор: {admin_id[0]}")
-        return [admin_id[0]], [admin_id[1]]
+        return admin_id[0], admin_id[1]
     else:
         logger.warning("Доступных администраторов не найдено.")
         return None
