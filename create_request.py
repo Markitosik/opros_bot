@@ -54,10 +54,13 @@ async def process_category(message: types.Message, state: FSMContext):
     # Проверяем, выбрана ли категория "Начисление" или "Корректировка данных в квитанции"
     if message.text in ["Начисления", "Корректировка данных в квитанции"]:
         await message.answer("Укажите адрес домовладения:", reply_markup=address_button())
+        await state.set_state(RequestCreationStates.enter_address)
+    elif message.text == "Актуальное":
+        await message.answer("Загрузите медиафайл, если нужно:", reply_markup=empty_or_skip_buttons(show_empty=False))
+        await state.set_state(RequestCreationStates.attach_media)
     else:
         await message.answer("Укажите адрес контейнерной площадки:", reply_markup=address_button())
-
-    await state.set_state(RequestCreationStates.enter_address)
+        await state.set_state(RequestCreationStates.enter_address)
 
 
 async def process_address(message: types.Message, state: FSMContext):
@@ -105,6 +108,16 @@ async def handle_address_confirmation(message: types.Message, state: FSMContext)
 async def process_media(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     media = None
+
+    await state.update_data(description=message.text)
+    data = await state.get_data()
+    if message.text == "Пропустить" and data['category'] == 'Актуальное':
+        logger.info(f"Пользователь с ID {message.from_user.id} не предоставил медиафайл.")
+        await state.update_data(address="-")
+        await state.update_data(media="")
+        await message.answer("Опишите проблему:", reply_markup=ReplyKeyboardRemove())
+        await state.set_state(RequestCreationStates.enter_description)
+        return
 
     if message.photo:
         media = message.photo[-1]
