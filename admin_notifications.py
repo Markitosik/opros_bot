@@ -19,7 +19,7 @@ async def notify_admins_about_request(bot: Bot, request_id, user_data, request_d
         f"ФИО: <b>{user_data['fio']}</b>\n"
         f"Номер: <b>{user_data['phone']}</b>\n"
         f"Email: <b>{user_data['email']}</b>\n"
-        f"Адрес: <b>{request_data['address']}</b>\n"
+        f"{f'Адрес: <b>{request_data.get("address")}</b>\n' if request_data.get('address') else ''}"
         f"Описание: <b>{request_data['description']}</b>"
     )
 

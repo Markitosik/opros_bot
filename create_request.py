@@ -48,6 +48,7 @@ async def create_request(message: types.Message, state: FSMContext):
 
 
 async def process_category(message: types.Message, state: FSMContext):
+    await state.set_data({})
     await state.update_data(category=message.text)
     logger.info(f"Пользователь {message.from_user.id} выбрал категорию: {message.text}")
 
@@ -113,7 +114,6 @@ async def process_media(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if message.text == "Пропустить" and data['category'] == 'Актуальное':
         logger.info(f"Пользователь с ID {message.from_user.id} не предоставил медиафайл.")
-        await state.update_data(address="-")
         await state.update_data(media="")
         await message.answer("Опишите проблему:", reply_markup=ReplyKeyboardRemove())
         await state.set_state(RequestCreationStates.enter_description)
@@ -160,7 +160,7 @@ async def process_description(message: types.Message, state: FSMContext):
         f"ФИО: <b>{user_data_base['fio']}</b>\n"
         f"Номер: <b>{user_data_base['phone']}</b>\n"
         f"Email: <b>{user_data_base['email']}</b>\n"
-        f"Адрес: <b>{data['address']}</b>\n"
+        f"{f'Адрес: <b>{data.get("address")}</b>\n' if data.get('address') else ''}"
         f"Описание: <b>{data['description']}</b>")
 
     logger.info(f"Пользователь {message.from_user.id} заполнил описание проблемы: {data['description']}")
